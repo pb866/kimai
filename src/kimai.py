@@ -13,19 +13,24 @@ class Kimai:
                  file="export.csv",
                  dir="../data/",
                  year=dt.datetime.now().year,
-                 vacation=0):
+                 vacation="vacation.csv"):
         # Read data file with exported Kimai times and convert time strins to datetimes
         rawdata = self._read_kimai(file, dir)
         data = self._convert_times(rawdata, year, vacation)
         # Count working and off-days
+        self.vacation_days(vacation,dir)
         self.__working_hours()
         self.__compile_hours(data)
+        print(self.__vacfile)
+
 
     def __repr__(self):
         return "Kimai(\"" + self.__file + "\", " + str(self.__year) + ")"
 
+
     def __str__(self):
         return "Kimai(worked: {:.2f}h, balance: {:.2f}h)".format(self.__workedhours, self.__balance)
+
 
     def stats(self):
         """
@@ -57,16 +62,48 @@ class Kimai:
                      - Hours worked: {wt} ({wh:.2f})
                      - Balance: {bt} ({bh:.2f})
 
-                     Extracted from Kimai file
-                     -------------------------
-                     - {kf}
+                     Data files
+                     ----------
+                     - Kimai data: {kf}
+                     - Vacation:   {vf}
                      """.format(sd=str(self.__period.start), ed=self.__period.end,
                      wd=self.__workingdays, we=self.__weekenddays,
                      hd=self.__holidays, al=self.__vacation,
                      dt=str(self.__workingtimes), dh=self.__workinghours,
                      wt=self.__workedtimes, wh=self.workedhours,
                      bt=self.__format_timedelta(self.__timedifference),
-                     bh=self.__balance, kf=self.__file)))
+                     bh=self.__balance, kf=self.__file, vf=self.__vacfile)))
+
+
+    def workdays(self, start, end, vacation=0):
+        offdays = holidays.Germany(prov='SN', years = [self.__year])
+        wdays, wends, hdays = -vacation, 0, 0
+        for day in pd.date_range(start=start, end=end):
+            if day in offdays:
+                hdays += 1
+            elif day.weekday() >= 5:
+                wends += 1
+            else:
+                wdays += 1
+        return wdays, wends, hdays
+
+
+    def vacation_days(self, vacation, dir='.'):
+        if isinstance(vacation, int):
+            self.__vacation = vacation
+            self.__vacfile = None
+            return vacation
+        self.__vacfile = self.__filepath(vacation, dir)
+        self.__vacation = 0
+        vacdata = pd.read_csv(self.__vacfile, header=0)
+        for index, data in vacdata.iterrows():
+            dates = pd.to_datetime(data.date.split('-'), dayfirst=True)
+            if len(dates) == 1:
+                self.__vacation += 1
+            else:
+                self.__vacation += self.workdays(dates[0], dates[1])[0]
+        return self.__vacation
+
 
     def _read_kimai(self, file, dir):
         """
@@ -84,6 +121,7 @@ class Kimai:
             usecols=["Date", "In", "Out", "h:m", "Time"]
         )
 
+
     def _convert_times(self, df, year, vacation):
         """
         Convert times and periods to standard datetime format.
@@ -100,8 +138,6 @@ class Kimai:
         Period = namedtuple("Period", ["start", "end"])
         self.__period = Period(start.iloc[-1].date(), end.iloc[0].date())
         self.__year = year
-        # Set vacation
-        self.__vacation = vacation
 
         # Correct dates for work periods over midnight
         for i in range(len(end)):
@@ -113,6 +149,14 @@ class Kimai:
             'duration': end - start,
             'hours': df.Time
         })
+
+
+    def __set_vacation(self, vacation):
+        # Set vacation, if given as integer
+        if is_integer(vacation):
+            self.__vacation = vacation
+            return
+
 
     def __filepath(self, filename, dir):
         """
@@ -131,6 +175,7 @@ class Kimai:
         """
         return filename if ('/' in filename) else path.join(dir, filename)
 
+
     def __working_hours(self):
         """
         Counts and stores working and off-days from the period and vacation
@@ -141,20 +186,13 @@ class Kimai:
         None.
 
         """
-        offdays = holidays.Germany(prov='SN', years = [self.__year])
-        wdays, wends, hdays = -self.__vacation, 0, 0
-        for day in pd.date_range(start=self.period.start, end=self.period.end):
-            if day in offdays:
-                hdays += 1
-            elif day.weekday() >= 5:
-                wends += 1
-            else:
-                wdays += 1
+        wdays, wends, hdays = self.workdays(self.__period.start, self.__period.end, vacation=self.__vacation)
         self.__workingdays = wdays
         self.__weekenddays = wends
         self.__holidays = hdays
         self.__workinghours = 8*wdays
         self.__workingtimes = dt.timedelta(hours=self.__workinghours)
+
 
     def __compile_hours(self, data):
         """
@@ -175,6 +213,7 @@ class Kimai:
         # Calculate balance
         self.__balance = self.__workedhours - self.__workinghours
         self.__timedifference = self.__workedtimes - self.__workingtimes
+
 
     def __format_timedelta(self, td):
         """
@@ -201,6 +240,14 @@ class Kimai:
         return self.__file
 
     @file.setter
+    def file(self, value):
+        print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
+
+    @property
+    def vacation_file(self):
+        return self.__vacfile
+
+    @vacation_file.setter
     def file(self, value):
         print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
 
@@ -307,5 +354,7 @@ if __name__ == '__main__':
     times = Kimai(vacation=1)
     times.stats()
     times = Kimai(file='../data/2022-04.csv', vacation=1)
+    times.stats()
+    times = Kimai()
     times.stats()
     # times.startdate = dt.date(2022, 4, 18)
