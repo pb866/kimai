@@ -1,4 +1,5 @@
 # Import modules
+from fileinput import filename
 from os import path
 from collections import namedtuple
 import pandas as pd
@@ -14,7 +15,7 @@ class Kimai:
                  year=dt.datetime.now().year,
                  vacation=0):
         # Read data file with exported Kimai times and convert time strins to datetimes
-        rawdata = self._read(file, dir)
+        rawdata = self._read_kimai(file, dir)
         data = self._convert_times(rawdata, year, vacation)
         # Count working and off-days
         self.__working_hours()
@@ -25,22 +26,6 @@ class Kimai:
 
     def __str__(self):
         return "Kimai(worked: {:.2f}h, balance: {:.2f}h)".format(self.__workedhours, self.__balance)
-
-    def _read(self, file, dir):
-        """
-        Reads data file with kimai times.
-
-        :param file: string file name
-        :param dir: string directory
-        :return: pandas dataframe file data
-        """
-
-        self.__file = path.join(dir, file)
-        return pd.read_csv(
-            self.__file,
-            header=0,
-            usecols=["Date", "In", "Out", "h:m", "Time"]
-        )
 
     def stats(self):
         """
@@ -58,30 +43,46 @@ class Kimai:
         print(dedent("""
                      Kimai Statistics for {sd} - {ed}
                      ============================================
-        
+
                      Work and off-days
                      -----------------
                      - Working days: {wd}
                      - Weekend days: {we}
                      - Holidays: {hd}
                      - Annual leave: {al}
-        
+
                      Balance account
                      ---------------
                      - Working hours (demand): {dt} ({dh:.2f})
                      - Hours worked: {wt} ({wh:.2f})
                      - Balance: {bt} ({bh:.2f})
-                      
+
                      Extracted from Kimai file
                      -------------------------
                      - {kf}
                      """.format(sd=str(self.__period.start), ed=self.__period.end,
-                     wd=self.__workingdays, we=self.__weekenddays, 
-                     hd=self.__holidays, al=self.__vacation, 
+                     wd=self.__workingdays, we=self.__weekenddays,
+                     hd=self.__holidays, al=self.__vacation,
                      dt=str(self.__workingtimes), dh=self.__workinghours,
-                     wt=self.__workedtimes, wh=self.workedhours, 
+                     wt=self.__workedtimes, wh=self.workedhours,
                      bt=self.__format_timedelta(self.__timedifference),
                      bh=self.__balance, kf=self.__file)))
+
+    def _read_kimai(self, file, dir):
+        """
+        Reads data file with kimai times.
+
+        :param file: string file name
+        :param dir: string directory
+        :return: pandas dataframe file data
+        """
+
+        self.__file = self.__filepath(file, dir)
+        return pd.read_csv(
+            self.__file,
+            header=0,
+            usecols=["Date", "In", "Out", "h:m", "Time"]
+        )
 
     def _convert_times(self, df, year, vacation):
         """
@@ -112,6 +113,23 @@ class Kimai:
             'duration': end - start,
             'hours': df.Time
         })
+
+    def __filepath(self, filename, dir):
+        """
+        Adds dir to filename, if path is not already included in filename.
+
+        Parameters
+        ----------
+        filename : string
+            File name with or without path included.
+        dir : string
+            Optional directory joined to the file name.
+
+        Returns
+        -------
+        string Join directory and file name.
+        """
+        return filename if ('/' in filename) else path.join(dir, filename)
 
     def __working_hours(self):
         """
@@ -150,7 +168,6 @@ class Kimai:
         Returns
         -------
         None.
-
         """
         # Define working times
         self.__workedtimes = sum(data.duration, dt.timedelta())
@@ -158,8 +175,20 @@ class Kimai:
         # Calculate balance
         self.__balance = self.__workedhours - self.__workinghours
         self.__timedifference = self.__workedtimes - self.__workingtimes
-        
+
     def __format_timedelta(self, td):
+        """
+        Counts the hours worked as time and float and calculates the respective balances.
+
+        Parameters
+        ----------
+        td : datetime.timedelta
+            A time difference from the datetime module.
+
+        Returns
+        -------
+        Formatted timedelta string, where timedeltas are displayed as ±|timedelta|.
+        """
         if td < dt.timedelta(0):
             return '-' + str(-td)
         else:
@@ -276,5 +305,7 @@ class Kimai:
 
 if __name__ == '__main__':
     times = Kimai(vacation=1)
+    times.stats()
+    times = Kimai(file='../data/2022-04.csv', vacation=1)
     times.stats()
     # times.startdate = dt.date(2022, 4, 18)
