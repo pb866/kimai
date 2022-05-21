@@ -66,15 +66,15 @@ class Kimai:
                      - Kimai data: {kf}
                      - Vacation:   {vf}
                      """.format(sd=str(self.__period.start), ed=self.__period.end,
-                     wd=self.__workingdays, we=self.__weekenddays,
-                     hd=self.__holidays, al=self.__vacation,
-                     dt=str(self.__workingtimes), dh=self.__workinghours,
-                     wt=self.__workedtimes, wh=self.workedhours,
+                     wd=self.__workdays, we=self.__weekenddays,
+                     hd=self.__holidays, al=self.__vacdays,
+                     dt=self.__format_timedelta(self.__workingtimes), dh=self.__workinghours,
+                     wt=self.__format_timedelta(self.__workedtimes), wh=self.workedhours,
                      bt=self.__format_timedelta(self.__timedifference),
                      bh=self.__balance, kf=self.__file, vf=self.__vacfile)))
 
 
-    def workdays(self, start, end, vacation=0, restrict_period=False):
+    def work_days(self, start, end, vacation=0, restrict_period=False):
         offdays = holidays.Germany(prov='SN', years = [self.__year])
         wdays, wends, hdays = -vacation, 0, 0
         if restrict_period:
@@ -93,20 +93,20 @@ class Kimai:
 
     def vacation_days(self, vacation, dir='.'):
         if isinstance(vacation, int):
-            self.__vacation = vacation
+            self.__vacdays = vacation
             self.__vacfile = None
             return vacation
         self.__vacfile = self.__filepath(vacation, dir)
-        self.__vacation = 0
+        self.__vacdays = 0
         vacdata = pd.read_csv(self.__vacfile, header=0)
         for index, data in vacdata.iterrows():
             dates = pd.to_datetime(data.date.split('-'), dayfirst=True)
             if len(dates) == 1:
                 if dates[0] in pd.date_range(*self.__period): 
-                    self.__vacation += 1
+                    self.__vacdays += 1
             else:
-                self.__vacation += self.workdays(dates[0], dates[1], restrict_period=True)[0]
-        return self.__vacation
+                self.__vacdays += self.work_days(dates[0], dates[1], restrict_period=True)[0]
+        return self.__vacdays
 
 
     def _read_kimai(self, file, dir):
@@ -158,7 +158,7 @@ class Kimai:
     def __set_vacation(self, vacation):
         # Set vacation, if given as integer
         if is_integer(vacation):
-            self.__vacation = vacation
+            self.__vacdays = vacation
             return
 
 
@@ -190,8 +190,8 @@ class Kimai:
         None.
 
         """
-        wdays, wends, hdays = self.workdays(self.__period.start, self.__period.end, vacation=self.__vacation)
-        self.__workingdays = wdays
+        wdays, wends, hdays = self.work_days(self.__period.start, self.__period.end, vacation=self.__vacdays)
+        self.__workdays = wdays
         self.__weekenddays = wends
         self.__holidays = hdays
         self.__workinghours = 8*wdays
@@ -231,12 +231,17 @@ class Kimai:
         Returns
         -------
         Formatted timedelta string, where timedeltas are displayed as ±|timedelta|.
+        1 day counts as 8 hours (1 work day).
         """
-        if td < dt.timedelta(0):
-            return '-' + str(-td)
-        else:
-            # Change this to format positive timedeltas the way you want
-            return '+'+str(td)
+        # Define sign of timedelta and remove it from timedelta
+        sign = "-" if td < dt.timedelta(0) else "+"
+        if td < dt.timedelta(0): td *= -1
+        # Add every 8 hours in seconds to days
+        adday, seconds = divmod(td.seconds, 8*3600)
+        # Transform days int work days (8h periods)
+        wdays = 3*td.days + adday
+        # Return formatted string
+        return sign + str(dt.timedelta(wdays, seconds))
 
 
     @property
@@ -252,7 +257,7 @@ class Kimai:
         return self.__vacfile
 
     @vacation_file.setter
-    def file(self, value):
+    def vacation_file(self, value):
         print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
 
     @property
@@ -272,19 +277,19 @@ class Kimai:
         print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
 
     @property
-    def vacation(self):
-        return self.__vacation
+    def vacationdays(self):
+        return self.__vacdays
 
-    @vacation.setter
-    def vacation(self, value):
+    @vacationdays.setter
+    def vacationdays(self, value):
         print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
 
     @property
-    def workingdays(self):
-        return self.__workingdays
+    def workdays(self):
+        return self.__workdays
 
-    @workingdays.setter
-    def workingdays(self, value):
+    @workdays.setter
+    def workdays(self, value):
         print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
 
     @property
