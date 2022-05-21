@@ -21,7 +21,6 @@ class Kimai:
         self.vacation_days(vacation,dir)
         self.__working_hours()
         self.__compile_hours(data)
-        print(self.__vacfile)
 
 
     def __repr__(self):
@@ -75,10 +74,14 @@ class Kimai:
                      bh=self.__balance, kf=self.__file, vf=self.__vacfile)))
 
 
-    def workdays(self, start, end, vacation=0):
+    def workdays(self, start, end, vacation=0, restrict_period=False):
         offdays = holidays.Germany(prov='SN', years = [self.__year])
         wdays, wends, hdays = -vacation, 0, 0
-        for day in pd.date_range(start=start, end=end):
+        if restrict_period:
+            drange = pd.date_range(start, end).intersection(pd.date_range(self.__period.start, self.__period.end))
+        else:
+            drange = pd.date_range(start, end) 
+        for day in drange:
             if day in offdays:
                 hdays += 1
             elif day.weekday() >= 5:
@@ -99,9 +102,10 @@ class Kimai:
         for index, data in vacdata.iterrows():
             dates = pd.to_datetime(data.date.split('-'), dayfirst=True)
             if len(dates) == 1:
-                self.__vacation += 1
+                if dates[0] in pd.date_range(*self.__period): 
+                    self.__vacation += 1
             else:
-                self.__vacation += self.workdays(dates[0], dates[1])[0]
+                self.__vacation += self.workdays(dates[0], dates[1], restrict_period=True)[0]
         return self.__vacation
 
 
