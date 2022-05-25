@@ -1,12 +1,38 @@
 # Import modules
-from fileinput import filename
-from os import path
+from os import path, strerror
+import logging
+import errno
 from collections import namedtuple
 import pandas as pd
 import datetime as dt
 import holidays
 import inspect
 from textwrap import dedent
+
+
+class CustomFormatter(logging.Formatter):
+
+    grey = "\x1b[35;20m"
+    cyan = "\x1b[36;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+    format = "%(levelname)s: %(message)s"
+
+    FORMATS = {
+        logging.DEBUG: grey + format + reset,
+        logging.INFO: cyan + format + reset,
+        logging.WARNING: yellow + format + reset,
+        logging.ERROR: red + format + reset,
+        logging.CRITICAL: bold_red + format + reset
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+
 
 class Kimai:
     def __init__(self,
@@ -80,7 +106,7 @@ class Kimai:
         if restrict_period:
             drange = pd.date_range(start, end).intersection(pd.date_range(self.__period.start, self.__period.end))
         else:
-            drange = pd.date_range(start, end) 
+            drange = pd.date_range(start, end)
         for day in drange:
             if day in offdays:
                 hdays += 1
@@ -93,20 +119,27 @@ class Kimai:
 
     def vacation_days(self, vacation, dir='.'):
         if isinstance(vacation, int):
-            self.__vacdays = vacation
-            self.__vacfile = None
-            return vacation
-        self.__vacfile = self.__filepath(vacation, dir)
+            return self.__vacation_number(vacation)
+        try:
+            self.__vacfile = self.__filepath(vacation, dir)
+        except FileNotFoundError:
+            logger.warning("File '{f}' not found. Vacation set to 0.".format(f=vacation))
+            return self.__vacation_number(0)
         self.__vacdays = 0
         vacdata = pd.read_csv(self.__vacfile, header=0)
         for index, data in vacdata.iterrows():
             dates = pd.to_datetime(data.date.split('-'), dayfirst=True)
             if len(dates) == 1:
-                if dates[0] in pd.date_range(*self.__period): 
+                if dates[0] in pd.date_range(*self.__period):
                     self.__vacdays += 1
             else:
                 self.__vacdays += self.work_days(dates[0], dates[1], restrict_period=True)[0]
         return self.__vacdays
+
+    def __vacation_number(self, n):
+        self.__vacdays = n
+        self.__vacfile = None
+        return n
 
 
     def _read_kimai(self, file, dir):
@@ -135,8 +168,8 @@ class Kimai:
         """
 
         # Convert time strings in raw data to datetimes
-        start = pd.to_datetime(df.Date + str(year) + " " + df.In)
-        end = pd.to_datetime(df.Date + str(year) + " " + df.Out)
+        start = pd.to_datetime(df.Date + str(year) + " " + df.In, dayfirst=True)
+        end = pd.to_datetime(df.Date + str(year) + " " + df.Out, dayfirst=True)
 
         # Extract time period covered in data file
         Period = namedtuple("Period", ["start", "end"])
@@ -157,7 +190,7 @@ class Kimai:
 
     def __set_vacation(self, vacation):
         # Set vacation, if given as integer
-        if is_integer(vacation):
+        if isinstance(vacation, int):
             self.__vacdays = vacation
             return
 
@@ -177,7 +210,11 @@ class Kimai:
         -------
         string Join directory and file name.
         """
-        return filename if ('/' in filename) else path.join(dir, filename)
+        filepath = filename if ('/' in filename) else path.join(dir, filename)
+        if path.exists(filepath):
+            return filepath
+        else:
+            raise FileNotFoundError(errno.ENOENT, strerror(errno.ENOENT), filepath)
 
 
     def __working_hours(self):
@@ -357,13 +394,25 @@ class Kimai:
         print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
 
 
+logger = logging.getLogger("Kimai")
+# logger.setLevel(logging.DEBUG)
+
+# create console handler with a higher log level
+ch = logging.StreamHandler()
+ch.setFormatter(CustomFormatter())
+logger.addHandler(ch)
 
 
 if __name__ == '__main__':
-    times = Kimai(vacation=1)
-    times.stats()
-    times = Kimai(file='../data/2022-04.csv', vacation=1)
-    times.stats()
+    # times = Kimai(vacation=1)
+    # times.stats()
+    # times = Kimai(file='../data/2022-04.csv', vacation=1)
+    # times.stats()
+    # times = Kimai(file='../data/2022-04.csv', vacation='happiness.csv')
+    # times.stats()
     times = Kimai()
     times.stats()
     # times.startdate = dt.date(2022, 4, 18)
+    
+    ch.close()
+    logger.removeHandler(ch)
