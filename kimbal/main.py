@@ -37,7 +37,7 @@ class CustomFormatter(logging.Formatter):
 class Kimai:
     def __init__(self,
                  file="export.csv",
-                 dir="../data/",
+                 dir="data/",
                  year=dt.datetime.now().year,
                  vacation="vacation.csv"):
         # Read data file with exported Kimai times and convert time strins to datetimes
@@ -406,13 +406,13 @@ logger.addHandler(ch)
 if __name__ == '__main__':
     # times = Kimai(vacation=1)
     # times.stats()
-    # times = Kimai(file='../data/2022-04.csv', vacation=1)
+    # times = Kimai(file='data/2022-04.csv', vacation=1)
     # times.stats()
-    # times = Kimai(file='../data/2022-04.csv', vacation='happiness.csv')
+    # times = Kimai(file='data/2022-04.csv', vacation='happiness.csv')
     # times.stats()
     times = Kimai()
     times.stats()
     # times.startdate = dt.date(2022, 4, 18)
-    
+
     ch.close()
     logger.removeHandler(ch)
