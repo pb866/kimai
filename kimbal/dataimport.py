@@ -32,7 +32,7 @@ class TimeLog:
         :return: pandas dataframe file data
         """
 
-        self.__kimai_file = self.__filepath(file, dir)
+        self.__kimai_file = filepath(file, dir)
         return pd.read_csv(
             self.__kimai_file,
             header=0,
@@ -70,30 +70,6 @@ class TimeLog:
             'hours': df.Time
         })
 
-
-    def __filepath(self, filename, dir):
-        """
-        Adds dir to filename, if path is not already included in filename.
-
-        Parameters
-        ----------
-        filename : string
-            File name with or without path included.
-        dir : string
-            Optional directory joined to the file name.
-
-        Returns
-        -------
-        string Join directory and file name.
-        """
-        filepath = filename if ('/' in filename) else path.join(dir, filename)
-        if path.exists(filepath):
-            return filepath
-        else:
-            raise FileNotFoundError(
-                errno.ENOENT, strerror(errno.ENOENT), filepath)    @ property
-
-
     @property
     def kimai_data(self):
         return self.__kimai_data
@@ -104,7 +80,7 @@ class TimeLog:
 
     @property
     def kimai_file(self):
-        return self.__file
+        return self.__kimai_file
 
     @kimai_file.setter
     def kimai_file(self, value):
@@ -128,3 +104,26 @@ class TimeLog:
     def year(self, value):
         print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(
             var=inspect.stack()[0][3], val=value))
+
+
+def filepath(filename, dir):
+    """
+    Adds dir to filename, if path is not already included in filename.
+
+    Parameters
+    ----------
+    filename : string
+        File name with or without path included.
+    dir : string
+        Optional directory joined to the file name.
+
+    Returns
+    -------
+    string Join directory and file name.
+    """
+    filepath = filename if ('/' in filename) else path.join(dir, filename)
+    if path.exists(filepath):
+        return filepath
+    else:
+        raise FileNotFoundError(
+            errno.ENOENT, strerror(errno.ENOENT), filepath)
