@@ -1,38 +1,11 @@
-# Import modules
-from os import path, strerror
-import logging
-import errno
-from collections import namedtuple
+# Import packages and modules
 import pandas as pd
 import datetime as dt
 import holidays
 import inspect
 from textwrap import dedent
 from kimbal.dataimport import TimeLog, filepath
-
-
-class CustomFormatter(logging.Formatter):
-
-    grey = "\x1b[35;20m"
-    cyan = "\x1b[36;20m"
-    yellow = "\x1b[33;20m"
-    red = "\x1b[31;20m"
-    bold_red = "\x1b[31;1m"
-    reset = "\x1b[0m"
-    format = "%(levelname)s: %(message)s"
-
-    FORMATS = {
-        logging.DEBUG: grey + format + reset,
-        logging.INFO: cyan + format + reset,
-        logging.WARNING: yellow + format + reset,
-        logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset
-    }
-
-    def format(self, record):
-        log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt)
-        return formatter.format(record)
+from kimbal.colourlog import logger, ch
 
 
 class Kimai(TimeLog):
@@ -123,7 +96,8 @@ class Kimai(TimeLog):
         try:
             self.vacfile = filepath(vacation, dir)
         except FileNotFoundError:
-            logger.warning("File '{f}' not found. Vacation set to 0.".format(f=vacation))
+            logger.warning("File '{f}' not found. Vacation set to 0.".format(
+                f=filepath(vacation, dir, always_return=True)))
             return self.__vacation_number(0)
         self.__vacdays = 0
         vacdata = pd.read_csv(self.vacfile, header=0)
@@ -294,15 +268,6 @@ class Kimai(TimeLog):
     @balance.setter
     def balance(self, value):
         print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
-
-
-logger = logging.getLogger("Kimai")
-# logger.setLevel(logging.DEBUG)
-
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setFormatter(CustomFormatter())
-logger.addHandler(ch)
 
 
 if __name__ == '__main__':

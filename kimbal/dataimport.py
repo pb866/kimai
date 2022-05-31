@@ -1,9 +1,9 @@
 from os import path, strerror
-import logging
 import errno
 from collections import namedtuple
 import pandas as pd
 import datetime as dt
+from kimbal.colourlog import logger
 
 class TimeLog:
     def __init__(self,
@@ -32,7 +32,10 @@ class TimeLog:
         :return: pandas dataframe file data
         """
 
-        self.__kimai_file = filepath(file, dir)
+        try:
+            self.__kimai_file = filepath(file, dir)
+        except FileNotFoundError:
+            logger.error("Data file with Kimai time log ('{f}') not found.".format(f=filepath(file, dir, always_return=True)))
         return pd.read_csv(
             self.__kimai_file,
             header=0,
@@ -106,7 +109,7 @@ class TimeLog:
             var=inspect.stack()[0][3], val=value))
 
 
-def filepath(filename, dir):
+def filepath(filename, dir, always_return=False):
     """
     Adds dir to filename, if path is not already included in filename.
 
@@ -122,7 +125,7 @@ def filepath(filename, dir):
     string Join directory and file name.
     """
     filepath = filename if ('/' in filename) else path.join(dir, filename)
-    if path.exists(filepath):
+    if always_return or path.exists(filepath):
         return filepath
     else:
         raise FileNotFoundError(
