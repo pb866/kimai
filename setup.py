@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python packages
-from setuptools import setup
+from setuptools import setup, find_packages
 from os import path
 import sys, re
 
@@ -31,7 +31,7 @@ setup(
     author='Peter Bräuer',
     author_email='pb866.git@gmail.com',
     url='https://github.com/pb866/kimbal.git',
-    packages=[PKGNAME],
+    packages=find_packages(),
     install_requires = ['pandas', 'holidays'],
     license='GPL3',
     description='Kimai time log analysis.',
