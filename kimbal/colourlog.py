@@ -1,18 +1,9 @@
 """
-NAME
-    colourlog
+Module of kimbal package for colouring log messages
+===================================================
 
-DESCRIPTION
-    Module of kimbal package for colouring log messages
-    ===================================================
-
-    The colourlog module formats log entries and assigns specific colours to the
-    debug messages, infos, warnings, errors, and critical errors.
-
-CONTENTS
-    class CustomFormatter(logging.Formatter)
-        Adds colours to log messages.
-    logger = logging.getLogger("Kimai")
+The colourlog module formats log entries and assigns specific colours to the
+debug messages, infos, warnings, errors, and critical errors.
 """
 
 
@@ -25,17 +16,6 @@ class CustomFormatter(logging.Formatter):
     Adds colours to log messages.
 
     Defines colours for debug, info, warning, error, and critical level and formats log messages.
-
-    Attributes
-    ----------
-    FORMATS : dict of {logging.Level: str}
-        Dictionary with formats for all logging levels
-
-    Methods
-    -------
-    format(record):
-        Formats log record according to FORMATS.
-
     """
 
     dbg = "\x1b[35;20m"

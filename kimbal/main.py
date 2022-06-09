@@ -1,26 +1,9 @@
 """
-NAME
-    kimbal
+Module main to determine Kimai balance
+======================================
 
-DESCRIPTION
-    Package to analyse Kimai time logs
-    ==================================
-
-    The name kimbal derives from Kimai and balance.
-    The package reads exported Kimai time log files as well as further meta data
-    such as annual and sick leave and analyses the working times. Main purpose is
-    to derive the balance of working time against the demand.
-
-PACKAGE CONTENTS
-    kimbal
-    ├─ main
-    ├─ colourlog
-    ├─ loader
-    └─ workcal
-
-CONTENTS OF MAIN
-    class Kimai(TimeLog)
-        Store and analyse Kimai TimeLog data within a TimeFrame.
+Module main combine all other kimbal modules, counts work hours and computes
+the balance
 """
 
 # Import packages and modules
@@ -33,58 +16,7 @@ from kimbal.colourlog import logger, ch
 
 
 class Kimai(TimeLog):
-    """
-    Store and analyse Kimai TimeLog data within a TimeFrame.
-
-    ...
-
-    Attributes
-    ----------
-    workdays : int
-        Number of work days within the period
-    weekenddays : int
-        Number of weekend days within the period
-    holidays : int
-        Number of holidays within the period
-    vacation : OffDays
-        with fields:
-        days : int
-            Number of vacation days within the period
-        file : string
-            Data file from which the data were retrieved
-    workinghours : float
-        Hours needed (debit) displayed as float
-    workingtimes : datetime.timedelta
-        Work time needed (debit) displayed as working days (8h) and hours, minutes, and seconds
-    workedhours : float
-        Work hours performed (credit) displayed as float
-    workedtimes : datetime.timedelta
-        Work hours performed (credit) displayed as working days (8h) and hours, minutes, and seconds
-    balance : float
-        Balance of work account (Hours needed (debit) - work hours performed (credit)) in hours as float
-    timedifference : datetime.timedelta
-        Balance of work account (Hours needed (debit) - work hours performed (credit)) in working days and time
-
-    Attributes inherited from TimeLog
-    ---------------------------------
-    file : str
-        Name of input file with Kimai data including the folder path.
-    data : pandas.dataframe
-        Kimai data with columns
-            - start (datetime.datetime): Start time of work session
-            - end (datetime.datetime): End time of work session
-            - duration (datetime.timedelta): Duration of work session as timedelta
-            - hours (float): Duration in hours of work session as float
-    year : int
-        Year for which Kimai data is valid
-    period : NamedTuple Period
-        start end end date of the Kimai data
-
-    Methods
-    -------
-    stats():
-        Prints the work account balance and further statistics.
-    """
+    """Store and analyse Kimai TimeLog data within a TimeFrame."""
 
     def __init__(self,
                  file="export.csv",

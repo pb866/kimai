@@ -1,23 +1,9 @@
 """
-NAME
-    loader
+Module of kimbal package for loading Kimai data
+===============================================
 
-DESCRIPTION
-    Module of kimbal package for loading Kimai data
-    ===============================================
-
-    The module contains classes and methods to reading csv files exported from
-    Kimai time logs.
-
-CONTENTS
-    class TimeFrame
-        Defines the period of the Kimai data.
-    class TimeLog(TimeFrame)
-        Loads and formats Kimai input data and saves it for further analysis.
-    def filepath(filename, dir='.', always_return=False)
-        Adds dir to filename, if path is not already included in filename.
-    Period = namedtuple("Period", ["start", "end"],
-        defaults=[dt.date(1900, 1, 1), dt.date(2100, 1, 1)])
+The module contains classes and methods to reading csv files exported from
+Kimai time logs.
 """
 
 # Import python packages
@@ -35,20 +21,7 @@ Period = namedtuple("Period", ["start", "end"],
 
 
 class TimeFrame:
-    """
-    Defines the period of the Kimai data.
-
-    Attributes
-    ----------
-    year : int
-        Year for which Kimai data is valid
-    period : NamedTuple Period
-        start end end date of the Kimai data
-
-    Methods
-    -------
-    None.
-    """
+    """ Defines the period of the Kimai data."""
 
     def __init__(self,
                  year=dt.datetime.now().year,
@@ -77,31 +50,7 @@ class TimeFrame:
 
 
 class TimeLog(TimeFrame):
-    """
-    Loads and formats Kimai input data and saves it for further analysis.
-
-    Attributes
-    ----------
-    file : str
-        Name of input file with Kimai data including the folder path.
-    data : pandas.dataframe
-        Kimai data with columns
-            - start (datetime.datetime): Start time of work session
-            - end (datetime.datetime): End time of work session
-            - duration (datetime.timedelta): Duration of work session as timedelta
-            - hours (float): Duration in hours of work session as float
-
-    Attributes inherited from TimeFrame
-    -----------------------------------
-    year : int
-        Year for which Kimai data is valid
-    period : NamedTuple Period
-        start end end date of the Kimai data
-
-    Methods
-    -------
-    None.
-    """
+    """Loads and formats Kimai input data and saves it for further analysis."""
 
     def __init__(self,
                  file="export.csv",
@@ -184,8 +133,7 @@ class TimeLog(TimeFrame):
 
 
 def filepath(filename, dir='.', always_return=False):
-    """
-    Adds dir to filename, if path is not already included in filename.
+    """Adds dir to filename, if path is not already included in filename.
 
     Parameters
     ----------

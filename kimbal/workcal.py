@@ -1,21 +1,9 @@
 """
-NAME
-    workcal
+Module of kimbal package for work and off days in Kimai logs
+============================================================
 
-DESCRIPTION
-    Module of kimbal package for work and off days in Kimai logs
-    ============================================================
-
-    The module contains classes and methods for counting work, weekend days, and
-    holidays as well as annual and sick leave.
-
-CONTENTS
-    class OffDays(TimeFrame)
-        Retrieve the number of non-work or off-days within a TimeFrame period.
-    def off_days(year, off, dir='.', restrict=Period())
-        Counts the number of off-days in a period.
-    def work_days(start, end, year, vacation=0, restrict=Period())
-        Counts the number of work days, weekend days, and holidays in a period.
+The module contains classes and methods for counting work, weekend days, and
+holidays as well as annual and sick leave.
 """
 
 # Import python packages
@@ -27,20 +15,7 @@ from kimbal.colourlog import logger
 
 
 class OffDays(TimeFrame):
-    """
-    Retrieve the number of non-work or off-days within a TimeFrame period.
-
-    Attributes
-    ----------
-    days : int
-        Number of off-days within the period
-    file : str
-        Data source file (including the directory)
-
-    Methods
-    -------
-    None.
-    """
+    """ Retrieve the number of non-work or off-days within a TimeFrame period."""
 
     def __init__(self,
                  off="vacation.csv",
