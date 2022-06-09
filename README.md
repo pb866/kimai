@@ -10,6 +10,7 @@ Proposed package structure
 ```
 kimbal
 ├─ main
-├─ dataimport
-└─ offdays
+├─ colourlog
+├─ loader
+└─ workcal
 ```

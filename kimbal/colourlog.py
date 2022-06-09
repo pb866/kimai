@@ -1,23 +1,57 @@
+"""
+NAME
+    colourlog
+
+DESCRIPTION
+    Module of kimbal package for colouring log messages
+    ===================================================
+
+    The colourlog module formats log entries and assigns specific colours to the
+    debug messages, infos, warnings, errors, and critical errors.
+
+CONTENTS
+    class CustomFormatter(logging.Formatter)
+        Adds colours to log messages.
+    logger = logging.getLogger("Kimai")
+"""
+
+
 # Import python packages
 import logging
 
 
 class CustomFormatter(logging.Formatter):
+    f"""
+    Adds colours to log messages.
 
-    grey = "\x1b[35;20m"
-    cyan = "\x1b[36;20m"
-    yellow = "\x1b[33;20m"
-    red = "\x1b[31;20m"
-    bold_red = "\x1b[31;1m"
+    Defines colours for debug, info, warning, error, and critical level and formats log messages.
+
+    Attributes
+    ----------
+    FORMATS : dict of {logging.Level: str}
+        Dictionary with formats for all logging levels
+
+    Methods
+    -------
+    format(record):
+        Formats log record according to FORMATS.
+
+    """
+
+    dbg = "\x1b[35;20m"
+    inf = "\x1b[36;20m"
+    wrn = "\x1b[33;20m"
+    err = "\x1b[31;20m"
+    crt = "\x1b[31;1m"
     reset = "\x1b[0m"
     format = "%(levelname)s: %(message)s"
 
     FORMATS = {
-        logging.DEBUG: grey + format + reset,
-        logging.INFO: cyan + format + reset,
-        logging.WARNING: yellow + format + reset,
-        logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset
+        logging.DEBUG: dbg + format + reset,
+        logging.INFO: inf + format + reset,
+        logging.WARNING: wrn + format + reset,
+        logging.ERROR: err + format + reset,
+        logging.CRITICAL: crt + format + reset
     }
 
     def format(self, record):

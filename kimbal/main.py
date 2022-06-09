@@ -1,38 +1,112 @@
+"""
+NAME
+    kimbal
+
+DESCRIPTION
+    Package to analyse Kimai time logs
+    ==================================
+
+    The name kimbal derives from Kimai and balance.
+    The package reads exported Kimai time log files as well as further meta data
+    such as annual and sick leave and analyses the working times. Main purpose is
+    to derive the balance of working time against the demand.
+
+PACKAGE CONTENTS
+    kimbal
+    ├─ main
+    ├─ colourlog
+    ├─ loader
+    └─ workcal
+
+CONTENTS OF MAIN
+    class Kimai(TimeLog)
+        Store and analyse Kimai TimeLog data within a TimeFrame.
+"""
+
 # Import packages and modules
 import pandas as pd
 import datetime as dt
-import holidays
-import inspect
 from textwrap import dedent
-from kimbal.dataimport import TimeLog, filepath
+from kimbal.loader import TimeLog, Period
+from kimbal.workcal import OffDays, work_days
 from kimbal.colourlog import logger, ch
 
 
 class Kimai(TimeLog):
+    """
+    Store and analyse Kimai TimeLog data within a TimeFrame.
+
+    ...
+
+    Attributes
+    ----------
+    workdays : int
+        Number of work days within the period
+    weekenddays : int
+        Number of weekend days within the period
+    holidays : int
+        Number of holidays within the period
+    vacation : OffDays
+        with fields:
+        days : int
+            Number of vacation days within the period
+        file : string
+            Data file from which the data were retrieved
+    workinghours : float
+        Hours needed (debit) displayed as float
+    workingtimes : datetime.timedelta
+        Work time needed (debit) displayed as working days (8h) and hours, minutes, and seconds
+    workedhours : float
+        Work hours performed (credit) displayed as float
+    workedtimes : datetime.timedelta
+        Work hours performed (credit) displayed as working days (8h) and hours, minutes, and seconds
+    balance : float
+        Balance of work account (Hours needed (debit) - work hours performed (credit)) in hours as float
+    timedifference : datetime.timedelta
+        Balance of work account (Hours needed (debit) - work hours performed (credit)) in working days and time
+
+    Attributes inherited from TimeLog
+    ---------------------------------
+    file : str
+        Name of input file with Kimai data including the folder path.
+    data : pandas.dataframe
+        Kimai data with columns
+            - start (datetime.datetime): Start time of work session
+            - end (datetime.datetime): End time of work session
+            - duration (datetime.timedelta): Duration of work session as timedelta
+            - hours (float): Duration in hours of work session as float
+    year : int
+        Year for which Kimai data is valid
+    period : NamedTuple Period
+        start end end date of the Kimai data
+
+    Methods
+    -------
+    stats():
+        Prints the work account balance and further statistics.
+    """
+
     def __init__(self,
                  file="export.csv",
-                 dir="data/",
+                 dir=".",
                  year=dt.datetime.now().year,
                  vacation="vacation.csv"):
         # Read data file with exported Kimai times and convert time strins to datetimes
-        TimeLog.__init__(self, file, dir, year)
+        super().__init__(file, dir, year)
         # Count working and off-days
-        self.vacation_days(vacation,dir)
+        self.__vacation = OffDays(vacation, dir, self.year, self.period)
         self.__working_hours()
         self.__compile_hours()
-
 
     def __repr__(self):
         return "Kimai(\"" + self.kimai_file + "\", " + str(self.year) + ")"
 
-
     def __str__(self):
         return "Kimai(worked: {:.2f}h, balance: {:.2f}h)".format(self.workedhours, self.balance)
 
-
     def stats(self):
         """
-        Print summary of working hours account.
+        Print summary of working hours account and further statistics.
 
         Parameters
         ----------
@@ -66,74 +140,31 @@ class Kimai(TimeLog):
                      - Vacation:   {vf}
                      """.format(sd=str(self.period.start), ed=self.period.end,
                      wd=self.workdays, we=self.weekenddays,
-                     hd=self.holidays, al=self.vacationdays,
+                     hd=self.holidays, al=self.vacation.days,
                      dt=self.__format_timedelta(self.workingtimes), dh=self.workinghours,
                      wt=self.__format_timedelta(self.workedtimes), wh=self.workedhours,
                      bt=self.__format_timedelta(self.timedifference),
-                     bh=self.balance, kf=self.kimai_file, vf=self.vacfile)))
-
-
-    def work_days(self, start, end, vacation=0, restrict_period=False):
-        offdays = holidays.Germany(prov='SN', years = [self.year])
-        wdays, wends, hdays = -vacation, 0, 0
-        if restrict_period:
-            drange = pd.date_range(start, end).intersection(pd.date_range(self.period.start, self.period.end))
-        else:
-            drange = pd.date_range(start, end)
-        for day in drange:
-            if day in offdays:
-                hdays += 1
-            elif day.weekday() >= 5:
-                wends += 1
-            else:
-                wdays += 1
-        return wdays, wends, hdays
-
-
-    def vacation_days(self, vacation, dir='.'):
-        if isinstance(vacation, int):
-            return self.__vacation_number(vacation)
-        try:
-            self.vacfile = filepath(vacation, dir)
-        except FileNotFoundError:
-            logger.warning("File '{f}' not found. Vacation set to 0.".format(
-                f=filepath(vacation, dir, always_return=True)))
-            return self.__vacation_number(0)
-        self.__vacdays = 0
-        vacdata = pd.read_csv(self.vacfile, header=0)
-        for index, data in vacdata.iterrows():
-            dates = pd.to_datetime(data.date.split('-'), dayfirst=True)
-            if len(dates) == 1:
-                if dates[0] in pd.date_range(*self.period):
-                    self.__vacdays += 1
-            else:
-                self.__vacdays += self.work_days(dates[0], dates[1], restrict_period=True)[0]
-        return self.vacation_days
-
-
-    def __vacation_number(self, n):
-        self.vacation_days = n
-        self.__vacfile = None
-        return n
-
+                     bh=self.balance, kf=self.kimai_file, vf=self.vacation.file)))
 
     def __working_hours(self):
         """
         Counts and stores working and off-days from the period and vacation
         as well as the holidays database.
 
+        Parameters
+        ----------
+        None.
+
         Returns
         -------
         None.
-
         """
-        wdays, wends, hdays = self.work_days(self.period.start, self.period.end, vacation=self.__vacdays)
+        wdays, wends, hdays = work_days(*self.period, self.year, vacation=self.__vacation.days)
         self.__workdays = wdays
         self.__weekenddays = wends
         self.__holidays = hdays
         self.__workinghours = 8*wdays
         self.__workingtimes = dt.timedelta(hours=self.__workinghours)
-
 
     def __compile_hours(self):
         """
@@ -141,20 +172,18 @@ class Kimai(TimeLog):
 
         Parameters
         ----------
-        data : pandas dataframe
-            Kimai data with corrected time columns.
+        None.
 
         Returns
         -------
         None.
         """
         # Define working times
-        self.__workedtimes = sum(self.kimai_data.duration, dt.timedelta())
-        self.__workedhours = sum(self.kimai_data.hours)
+        self.__workedtimes = sum(self.data.duration, dt.timedelta())
+        self.__workedhours = sum(self.data.hours)
         # Calculate balance
         self.__balance = self.__workedhours - self.__workinghours
         self.__timedifference = self.__workedtimes - self.__workingtimes
-
 
     def __format_timedelta(self, td):
         """
@@ -180,103 +209,54 @@ class Kimai(TimeLog):
         # Return formatted string
         return sign + str(dt.timedelta(wdays, seconds))
 
+    def __setter(self, value):
+        logger.warning("Kimai values cannot be changed.")
 
-    @property
-    def vacation_file(self):
-        return self.__vacfile
+    def __deleter(self):
+        logger.warning("Kimai attributes cannot be deleted.")
 
-    @vacation_file.setter
-    def vacation_file(self, value):
-        print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
+    def __get_workdays(self): return self.__workdays
+    workdays = property(__get_workdays, __setter, __deleter,
+                        "Number of work days within the period")
 
-    @property
-    def vacationdays(self):
-        return self.__vacdays
+    def __get_weekenddays(self): return self.__weekenddays
+    weekenddays = property(__get_weekenddays, __setter, __deleter,
+                           "Number of weekend days within the period")
 
-    @vacationdays.setter
-    def vacationdays(self, value):
-        print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
+    def __get_holidays(self): return self.__holidays
+    holidays = property(__get_holidays, __setter, __deleter,
+                        "Number of holidays within the period")
 
-    @property
-    def workdays(self):
-        return self.__workdays
+    def __get_vacation(self): return self.__vacation
+    vacation = property(__get_vacation, __setter, __deleter,
+                        "Offdays object with number of vacation days within the period and the data source file")
 
-    @workdays.setter
-    def workdays(self, value):
-        print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
+    def __get_workinghours(self): return self.__workinghours
+    workinghours = property(__get_workinghours, __setter, __deleter,
+                            "Hours needed (debit) displayed as float")
 
-    @property
-    def weekenddays(self):
-        return self.__weekenddays
+    def __get_workingtimes(self): return self.__workingtimes
+    workingtimes = property(__get_workingtimes, __setter, __deleter,
+                            "Work time needed (debit) displayed as working days (8h) and hours, minutes, and seconds")
 
-    @weekenddays.setter
-    def weekenddays(self, value):
-        print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
+    def __get_workedhours(self): return self.__workedhours
+    workedhours = property(__get_workedhours, __setter, __deleter,
+                           "Work hours performed (credit) displayed as float")
 
-    @property
-    def holidays(self):
-        return self.__holidays
+    def __get_workedtimes(self): return self.__workedtimes
+    workedtimes = property(__get_workedtimes, __setter, __deleter,
+                           "Work hours performed (credit) displayed as working days (8h) and hours, minutes, and seconds")
 
-    @holidays.setter
-    def holidays(self, value):
-        print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
+    def __get_balance(self): return self.__balance
+    balance = property(__get_balance, __setter, __deleter,
+                       "Balance of work account (Hours needed (debit) - work hours performed (credit)) in hours as float")
 
-    @property
-    def workinghours(self):
-        return self.__workinghours
-
-    @workinghours.setter
-    def workinghours(self, value):
-        print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
-
-    @property
-    def workingtimes(self):
-        return self.__workingtimes
-
-    @workingtimes.setter
-    def workingtimes(self, value):
-        print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
-
-    @property
-    def workedhours(self):
-        return self.__workedhours
-
-    @workedhours.setter
-    def workedhours(self, value):
-        print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
-
-    @property
-    def workedtimes(self):
-        return self.__workedtimes
-
-    @workedtimes.setter
-    def workedtimes(self, value):
-        print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
-
-    @property
-    def timedifference(self):
-        return self.__timedifference
-
-    @timedifference.setter
-    def timedifference(self, value):
-        print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
-
-    @property
-    def balance(self):
-        return self.__balance
-
-    @balance.setter
-    def balance(self, value):
-        print("Kimai values cannot be changed. Request denied to change {var} to {val}.".format(var=inspect.stack()[0][3], val=value))
+    def __get_timedifference(self): return self.__timedifference
+    timedifference = property(__get_timedifference, __setter, __deleter,
+                              "Balance of work account (Hours needed (debit) - work hours performed (credit)) in working days and time")
 
 
 if __name__ == '__main__':
-    # times = Kimai(vacation=1)
-    # times.stats()
-    # times = Kimai(file='data/2022-04.csv', vacation=1)
-    # times.stats()
-    # times = Kimai(file='data/2022-04.csv', vacation='happiness.csv')
-    # times.stats()
     times = Kimai()
     times.stats()
     # times.startdate = dt.date(2022, 4, 18)
