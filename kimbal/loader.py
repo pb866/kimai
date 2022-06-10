@@ -7,7 +7,7 @@ Kimai time logs.
 """
 
 # Import python packages
-from os import path, strerror
+import os
 from sys import exit
 import errno
 import pandas as pd
@@ -54,7 +54,7 @@ class TimeLog(TimeFrame):
 
     def __init__(self,
                  file="export.csv",
-                 dir=".",
+                 dir=os.getcwd(),
                  year=dt.datetime.now().year
                  ):
         # Read data file with exported Kimai times and convert time strins to datetimes
@@ -149,12 +149,12 @@ def filepath(filename, dir='.', always_return=False):
     str
         Join directory and file name.
     """
-    file = filename if ('/' in filename) else path.join(dir, filename)
-    if always_return or path.exists(file):
+    file = filename if ('/' in filename) else os.path.join(dir, filename)
+    if always_return or os.path.exists(file):
         return file
     else:
         raise FileNotFoundError(
-            errno.ENOENT, strerror(errno.ENOENT), file)
+            errno.ENOENT, os.strerror(errno.ENOENT), file)
 
 
 if __name__ == "__main__":

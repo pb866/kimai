@@ -7,6 +7,7 @@ the balance
 """
 
 # Import packages and modules
+import os
 import pandas as pd
 import datetime as dt
 from textwrap import dedent
@@ -20,7 +21,7 @@ class Kimai(TimeLog):
 
     def __init__(self,
                  file="export.csv",
-                 dir=".",
+                 dir=os.getcwd(),
                  year=dt.datetime.now().year,
                  vacation="vacation.csv"):
         # Read data file with exported Kimai times and convert time strins to datetimes
@@ -31,7 +32,7 @@ class Kimai(TimeLog):
         self.__compile_hours()
 
     def __repr__(self):
-        return "Kimai(\"" + self.kimai_file + "\", " + str(self.year) + ")"
+        return "Kimai(\"" + self.__file + "\", " + str(self.year) + ")"
 
     def __str__(self):
         return "Kimai(worked: {:.2f}h, balance: {:.2f}h)".format(self.workedhours, self.balance)
@@ -76,7 +77,7 @@ class Kimai(TimeLog):
                      dt=self.__format_timedelta(self.workingtimes), dh=self.workinghours,
                      wt=self.__format_timedelta(self.workedtimes), wh=self.workedhours,
                      bt=self.__format_timedelta(self.timedifference),
-                     bh=self.balance, kf=self.kimai_file, vf=self.vacation.file)))
+                     bh=self.balance, kf=self.file, vf=self.vacation.file)))
 
     def __working_hours(self):
         """

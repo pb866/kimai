@@ -7,6 +7,7 @@ holidays as well as annual and sick leave.
 """
 
 # Import python packages
+import os
 import pandas as pd
 import datetime as dt
 import holidays
@@ -19,7 +20,7 @@ class OffDays(TimeFrame):
 
     def __init__(self,
                  off="vacation.csv",
-                 dir=".",
+                 dir=os.getcwd(),
                  year=dt.datetime.now().year,
                  period=Period()
                  ):
